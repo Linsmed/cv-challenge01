@@ -1,23 +1,20 @@
-# Stage 0, "build-stage", based on Node.js, to build and compile the frontend
-FROM node:20 as build-stage
+FROM node:18-alpine3.18
 
+# Set working directory
 WORKDIR /app
 
+# Copy package files first to leverage Docker cache
 COPY package*.json /app/
 
+# Install dependencies
 RUN npm install
 
-COPY ./ /app/
+# Copy the rest of the application code
+# Note the use of .dockerignore to exclude unnecessary files
+COPY . /app/
 
-ARG VITE_API_URL=${VITE_API_URL}
+# Expose the development port (typically 5173 for Vite, adjust as needed)
+EXPOSE 5173
 
-RUN npm run build
-
-
-# Stage 1, based on Nginx, to have only the compiled app, ready for production with Nginx
-FROM nginx:1
-
-COPY --from=build-stage /app/dist/ /usr/share/nginx/html
-
-COPY ./nginx.conf /etc/nginx/conf.d/default.conf
-COPY ./nginx-backend-not-found.conf /etc/nginx/extra-conf.d/backend-not-found.conf
+# Run development server
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"] 

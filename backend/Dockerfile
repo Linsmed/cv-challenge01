@@ -1,20 +1,33 @@
-# Use the latest official Python image as a base
-FROM python:latest
+# Use Python 3.10 image as base
+FROM python:3.12-slim
 
-# Install Poetry using pip
-RUN pip install poetry uvicorn
+# Set the working directory in the container
 
-# Set the working directory
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH="/app:$PYTHONPATH"
+
+# Install curl and bash
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
+RUN pip install poetry
 
-# Copy the application files
-COPY . .
+# Copy the rest of the application code into the container
+COPY pyproject.toml poetry.lock /app/
 
-# Install dependencies using Poetry
-RUN poetry install
+# Install the dependencies using Poetry
+RUN poetry config virtualenvs.create true \
+    && poetry install --no-dev --no-interaction --no-ansi
+COPY . /app
+# Make sure the prestart script is executable
+RUN chmod +x /app/prestart.sh
 
-# Expose the port FastAPI runs on
-EXPOSE 80
+# Expose the port the app runs on
+EXPOSE 8000
 
 # Run the prestart script and start the server
-CMD ["sh", "-c", "poetry run bash ./prestart.sh && poetry run uvicorn app.main:app --host 0.0.0.0 --port 80 --reload"]
+CMD ["sh", "-c", "poetry run bash /app/prestart.sh && poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
